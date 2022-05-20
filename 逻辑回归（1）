@@ -1,0 +1,115 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+
+# OrderedDict实现了对字典对象中元素的排序；
+# 普通的字典，传入的顺序不一样，但是依然是相同的字典（输出一样）；
+# orderedDict字典，传入的顺序不一样，那么得到的字典是不一样的（按照输入的顺序进行排列）。
+from collections import OrderedDict 
+
+
+# 1.数据导入
+def inputData():
+    data = pd.read_csv('C:\\Users\\Administrator\\Desktop\\logisticRegression_1.txt'
+                ,dtype={0:float,1:float,2:int}) 
+    data.insert(0,"one",[1 for i in range(0,data.shape[0])]) #插入全为1的列，即theta0用于矩阵线性计算
+    # 读取X和y
+    # iloc（）：前面的冒号是取行数，后面的冒号是取列数，
+    X=data.iloc[:,0:3].values  # 取.txt文件取每行的前 3 列
+    y=data.iloc[:,3].values    # 取.txt文件的第 3 列
+    y=y.reshape(y.shape[0],1)  # shape（）：查看数据有多少行多少列，0表示行数，1表示列数
+                               # reshape()：数组array中的方法，将数据重构
+    return X,y
+
+
+# 2.数据可视化
+def showData(X,y):
+    for i in range(0, X.shape[0]):  # range(start, stop, step)；开始值默认为0；左闭右开；
+        if(y[i,0]==1):
+            plt.scatter(X[i,1],X[i,2],marker='o', s=50, c='b',label='Admitted')
+        elif(y[i,0]==0):
+            plt.scatter(X[i,1],X[i,2],marker='x', s=50, c='r',label='Not admitted')
+    #设置坐标轴和图例
+    plt.xticks(np.arange(30,110,10)) # 步长为10
+    plt.yticks(np.arange(30,110,10))
+    plt.xlabel('Exam 1 score')
+    plt.ylabel('Exam 2 score')
+    #因为上面绘制的散点不做处理的话，会有很多重复标签
+    #因此这里导入一个集合类消除重复的标签
+    handles, labels = plt.gca().get_legend_handles_labels()     # 获得标签,gca:Get Current Axes
+    by_label = OrderedDict(zip(labels, handles))                # 通过集合来删除重复的标签
+    plt.legend(by_label.values(), by_label.keys())              # 显示图例
+    plt.show()
+
+    
+# 3.sigmoid函数
+def sigmoid(z):
+    return 1/(1+np.exp(-z))
+
+
+# 4.代价函数
+def showCostsJ(X,y,theta,m):
+    # 式子中加了1e-6次方是为了扩大精度，防止出现除0的警告！！！
+    # X @ theta与X.dot(theta)等价，X*theta
+    costsJ = ((y*np.log(sigmoid(X@theta)+ 1e-6))+((1-y)*np.log(1-sigmoid(X@theta)+ 1e-6))).sum()/(-m)
+    return costsJ
+
+
+# 5.梯度下降函数
+def gradientDescent(X,y,theta,m,alpha,iterations):
+    for i in range(0,iterations): 
+        ys=sigmoid(X@theta)-y
+        temp0=theta[0][0]-alpha*(ys*(X[:,0].reshape(X.shape[0],1))).sum()  #注意这里一定要将X[:,1]reshape成向量
+        temp1=theta[1][0]-alpha*(ys*(X[:,1].reshape(X.shape[0],1))).sum()
+        temp2=theta[2][0]-alpha*(ys*(X[:,2].reshape(X.shape[0],1))).sum()
+        theta[0][0]=temp0          #进行同步更新θ0和θ1和θ2
+        theta[1][0]=temp1
+        theta[2][0]=temp2
+
+        # 使用X.T@ys可以替代掉之前的同步更新方式，更简洁
+        # theta=theta-alpha*(X.T@ys)/m
+        
+    return theta
+
+
+# 6.决策边界可视化函数
+def evaluateLogisticRegression(X,y,theta):
+    # 与数据可视化函数相同
+    for i in range(0,X.shape[0]):
+        if(y[i,0]==1):
+            plt.scatter(X[i,1],X[i,2],marker='o', s=50, c='b',label='Admitted')
+        elif(y[i,0]==0):
+            plt.scatter(X[i,1],X[i,2],marker='x', s=50, c='r',label='Not admitted')
+    plt.xticks(np.arange(30,110,10))
+    plt.yticks(np.arange(30,110,10))
+    plt.xlabel('Exam 1 score')
+    plt.ylabel('Exam 2 score')
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = OrderedDict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())
+
+    minX=np.min(X[:,1])         #取得x1中的最小值
+    maxX=np.max(X[:,1])         #取得x1中的最大值
+    xx=np.linspace(minX,maxX,100)   #创建等间距的数100个
+    yy=(theta[0][0]+theta[1][0]*xx)/(-theta[2][0])      #绘制决策边界
+    plt.plot(xx,yy)
+    plt.show()
+
+    
+# 7.准确率函数
+def judge(X,y,theta):
+    ys=sigmoid(X@theta)         #根据假设函数计算预测值ys
+    yanswer=y-ys                #使用真实值y-预测值ys
+    yanswer=np.abs(yanswer)     #对yanswer取绝对值
+    print('accuary:',(yanswer<0.5).sum()/y.shape[0]*100,'%')   #计算准确率并打印结果
+
+
+X,y = inputData()           #输入数据   
+theta=np.zeros((3,1))       #初始化theta数组
+alpha=0.0002                 #设定alpha值
+iterations=200000            #设定迭代次数
+theta=gradientDescent(X,y,theta,X.shape[0],alpha,iterations)        #进行梯度下降
+judge(X,y,theta)            #计算准确率
+evaluateLogisticRegression(X,y,theta)  
+
